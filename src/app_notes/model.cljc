@@ -5,7 +5,7 @@
   not the user's filesystem. A notes app has no business reading Documents —
   it reads and writes the notes it created. This is the same capability
   aiueos's `examples/apps/notes.edn` requests, and for the same reason."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [mokuroku.item :as item]
             [mokuroku.source :as source]))
 
