@@ -2,7 +2,7 @@
   (:require [app-notes.model :as model]
             [app-notes.page :as page]
             [app-notes.source :as source]
-            [clojure.test :refer [deftest is testing]]
+            [kotoba.test :refer [deftest is testing]]
             [design-quality.audit :as dq]
             [mokuroku.catalog :as catalog]))
 
