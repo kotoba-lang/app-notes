@@ -1,0 +1,28 @@
+(ns app-notes.model-parity-test
+  "aiueos/notes_model.cljk（itonami dapp bundle の判定コア）との parity。
+  guest 側の test-*（amu test が jvm-kir/js/wasm で同じ fixture を実行）が
+  置く index / length の数値と、model の derive-title の結果が一致する。
+  title の長さ = guest の title-length、先頭位置 = guest の title-start。"
+  (:require [clojure.test :refer [deftest is testing]]
+            [app-notes.model :as model]))
+
+(deftest title-parity
+  (testing "guest test-groceries: \"Groceries\" は先頭 0・長さ 9"
+    (let [t (model/derive-title "Groceries\nmilk\neggs")]
+      (is (= "Groceries" t))
+      (is (= 9 (count t)))))
+  (testing "guest test-indented: 空行飛ばしで \"ADR review\"・長さ 10"
+    (let [t (model/derive-title "  \n\nADR review\nread")]
+      (is (= "ADR review" t))
+      (is (= 10 (count t)))))
+  (testing "guest test-untitled / test-spaces: 空・空白のみは untitled（note-status 1）"
+    (is (= model/untitled (model/derive-title "")))
+    (is (= model/untitled (model/derive-title "  \n\n"))))
+  (testing "guest test-no-newline: LF が無くても末尾までが title・長さ 4"
+    (let [t (model/derive-title "solo")]
+      (is (= "solo" t))
+      (is (= 4 (count t)))))
+  (testing "guest test-trailing: title は trim される（末尾空白は長さに入らない）"
+    (let [t (model/derive-title "note  \nnext")]
+      (is (= "note" t))
+      (is (= 4 (count t))))))

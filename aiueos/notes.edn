@@ -1,0 +1,20 @@
+;; app-notes — itonami（dapp）の aiueos アプリ記述子（notes.edn 形）。
+;; 判定コアは aiueos/notes_model.cljk（title の派生判定）。
+;; capability は model.cljk のいう fs/app-data（ホストが provider を供給し、
+;; そこで grant を消費する）。この guest 自体は pure（:effects #{}）で、
+;; fs/app-data の効果はホスト層の話 — imports は空。
+;; 実行 host は vector 型のため KIR v4 / kototama-browser-host-v1（amu selfhost）。
+{:aiueos/component :app/notes
+ :aiueos/kind :app
+ :aiueos/trust :untrusted
+ :aiueos/source "notes_model.cljk"
+ :aiueos/wasm "notes_model.wasm"
+ :aiueos/entry "main"
+ :aiueos/args []
+ :aiueos/imports #{}
+ :aiueos/exports #{:app/main
+                   :app/title-start
+                   :app/title-length
+                   :app/note-status}
+ :aiueos/effects #{}
+ :aiueos/limits {:memory-pages 16 :fuel 5000000}}
