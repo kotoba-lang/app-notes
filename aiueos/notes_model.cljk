@@ -1,0 +1,91 @@
+(ns notes.model
+  "app-notes 判定コア — itonami dapp bundle（pure, :effects #{}）。
+
+  「title は派生であって保存ではない」（README の三つの決定の一つ）を guest に
+  落としたもの: body の UTF-8 バイト列から派生 title の位置を判定する。
+  ホストがその範囲で slicing して title を作る。判定は pure。
+
+  body は i64 ベクトル（1 要素 = 1 UTF-8 バイト）。空白は space / tab / CR / LF。
+  - title-start: 最初の非空白バイトの index。全て空白なら -1（untitled）
+  - title-length: title-start から次の LF（または末尾）までの長さ
+  - note-status: 0 = title あり / 1 = untitled（空 body。「New Note」を付けるのは
+    ホストの仕事 — プレースホルダ文字列は判断ではない）
+
+  実行 host は vector 型のため KIR v4 / kotoba.typed-externref-v1
+  （kototama-browser-host-v1 = amu selfhost）。
+
+  テストはゼロ引数 test-*、戻り 1/0:
+  <amu> test aiueos/notes_model.cljk"
+  (:export [main title-start title-length note-status
+            test-groceries test-indented test-untitled test-no-newline
+            test-spaces test-trailing]))
+
+(defn main [] :i64
+  0)
+
+(defn- blank? [b :i64] :i64
+  (if (or (= b 32) (= b 9) (= b 13) (= b 10)) 1 0))
+
+(defn- find-start [body :vector-i64 n :i64 i :i64] :i64
+  (if (< i n)
+    (if (= (blank? (vector-at body i)) 1)
+      (find-start body n (+ i 1))
+      i)
+    -1))
+
+(defn title-start [body :vector-i64] :i64
+  (find-start body (vector-count body) 0))
+
+(defn- line-end [body :vector-i64 n :i64 i :i64] :i64
+  (if (< i n)
+    (if (= (vector-at body i) 10)
+      i
+      (line-end body n (+ i 1)))
+    n))
+
+(defn- trim-end [body :vector-i64 e :i64 s :i64] :i64
+  ;; title は model/derive-title どおり trim される（末尾空白を除く）
+  (if (and (> e s) (= (blank? (vector-at body (- e 1))) 1))
+    (trim-end body (- e 1) s)
+    e))
+
+(defn title-length [body :vector-i64] :i64
+  (let [s (title-start body)]
+    (if (< s 0)
+      0
+      (let [e (line-end body (vector-count body) s)]
+        (- (trim-end body e s) s)))))
+
+(defn note-status [body :vector-i64] :i64
+  (if (< (title-start body) 0) 1 0))
+
+;; --- tests（戻り 1 = pass。fixture は app-notes.model-test と同形）---------
+
+(defn test-groceries [] :i64
+  ;; "Groceries\nmilk\neggs": start 0, len 9
+  (let [b [71 114 111 99 101 114 105 101 115 10 109 105 108 107 10 101 103 103 115]]
+    (if (and (= (title-start b) 0) (= (title-length b) 9) (= (note-status b) 0)) 1 0)))
+
+(defn test-indented [] :i64
+  ;; "  \n\nADR review\nread": title = "ADR review" at start 4, len 10
+  (let [b [32 32 10 10 65 68 82 32 114 101 118 105 101 119 10 114 101 97 100]]
+    (if (and (= (title-start b) 4) (= (title-length b) 10)) 1 0)))
+
+(defn test-untitled [] :i64
+  (let [b []]
+    (if (and (= (title-start b) -1) (= (note-status b) 1) (= (title-length b) 0)) 1 0)))
+
+(defn test-no-newline [] :i64
+  ;; "solo": start 0, len 4（LF が無ければ末尾まで）
+  (let [b [115 111 108 111]]
+    (if (and (= (title-start b) 0) (= (title-length b) 4)) 1 0)))
+
+(defn test-spaces [] :i64
+  ;; "  \n\n" のみ: untitled
+  (let [b [32 32 10 10]]
+    (if (= (note-status b) 1) 1 0)))
+
+(defn test-trailing [] :i64
+  ;; "note  \\nnext": title は trim されて "note"（len 4）
+  (let [b [110 111 116 101 32 32 10 110 101 120 116]]
+    (if (= (title-length b) 4) 1 0)))
